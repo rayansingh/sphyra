@@ -2,8 +2,8 @@
 #include "renderer.h"
 #include "vec3.h"
 #include <SDL2/SDL.h>
-#include <vector>
 #include <random>
+#include <vector>
 
 struct BackgroundStar {
     float x, y;
@@ -22,8 +22,10 @@ class Body {
     Body(Vec3 center, Vec3 vel, Vec3 acc, float radius = 10, float mass = 10)
         : center(center), vel(vel), acc(acc), radius(radius), mass(mass) {};
 
-    void draw(SDL_Renderer *renderer, Vec3 lightPos, Vec3 camPos) {
-        drawSphere3D(renderer, center, radius, lightPos, camPos);
+    void draw(SDL_Renderer *renderer, Vec3 lightPos, Vec3 camPos, const Camera &camera, Vec3 pivot) {
+        Vec3 rotatedCenter = camera.rotatePoint(center - pivot) + pivot;
+        Vec3 rotatedLight = camera.rotatePoint(lightPos - pivot) + pivot;
+        drawSphere3D(renderer, rotatedCenter, radius, rotatedLight, camPos);
     }
 };
 
@@ -32,8 +34,9 @@ class Scene {
     Camera camera;
     std::vector<Body> bodies;
     std::vector<BackgroundStar> stars;
+    Vec3 pivot; // Rotation pivot point
 
-    Scene(unsigned int numStars = 0) {
+    Scene(unsigned int numStars = 0) : pivot(0, 0, 200) {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> distX(0.0f, 800.0f);
@@ -54,11 +57,12 @@ class Scene {
 
         // Draw bodies
         for (auto &body : bodies) {
-            body.draw(renderer, camera.lightPos, camera.position);
+            body.draw(renderer, camera.lightPos, camera.position, camera, pivot);
         }
 
         // Draw light source
-        drawLightSource(renderer, camera.lightPos, camera.position);
+        Vec3 rotatedLight = camera.rotatePoint(camera.lightPos - pivot) + pivot;
+        drawLightSource(renderer, rotatedLight, camera.position);
     }
 };
 
@@ -68,7 +72,7 @@ int main(int argc, char *argv[]) {
     SDL_Window *window = SDL_CreateWindow("sphyra", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    Scene scene(100);
+    Scene scene(1000);
     bool running = true;
     SDL_Event event;
 
@@ -81,8 +85,8 @@ int main(int argc, char *argv[]) {
                 running = false;
             scene.camera.handleInput(event);
 
-            // Check for click events
-            if (event.type == SDL_MOUSEBUTTONDOWN) {
+            // Check for right click to place bodies
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
                 int mouseX, mouseY;
                 SDL_GetMouseState(&mouseX, &mouseY);
 
