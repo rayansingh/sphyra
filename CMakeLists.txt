@@ -22,11 +22,25 @@ target_link_libraries(sphyra ${SDL2_LIBRARIES})
 # Run Linter
 add_custom_target(
     lint
-    COMMAND /opt/homebrew/opt/llvm/bin/clang-tidy -p 
+    COMMAND /opt/homebrew/opt/llvm/bin/clang-tidy -p
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/src/main.cpp
         ${CMAKE_SOURCE_DIR}/src/core/camera.cpp
         ${CMAKE_SOURCE_DIR}/src/render/renderer.cpp
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "clang-tidy"
+)
+
+# Run formatter
+add_custom_target(
+    format
+    COMMAND /opt/homebrew/opt/llvm/bin/clang-format -i
+        ${CMAKE_SOURCE_DIR}/src/main.cpp
+        ${CMAKE_SOURCE_DIR}/src/core/camera.cpp
+        ${CMAKE_SOURCE_DIR}/src/render/renderer.cpp
+        ${CMAKE_SOURCE_DIR}/include/camera.h
+        ${CMAKE_SOURCE_DIR}/include/renderer.h
+        ${CMAKE_SOURCE_DIR}/include/vec3.h
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "clang-format"
 )
