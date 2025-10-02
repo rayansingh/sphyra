@@ -4,7 +4,7 @@
 
 constexpr int SCREEN_CENTER_X = 400;         // Screen center X value (800/2)
 constexpr int SCREEN_CENTER_Y = 300;         // Screen center Y value (600/2)
-constexpr float LIGHT_SPHERE_RADIUS = 15.0f; // Light source radius
+constexpr float LIGHT_SPHERE_RADIUS = 10.0f; // Light source radius
 
 void drawSphere3D(SDL_Renderer *renderer, Vec3 center, float radius, Vec3 lightPos, Vec3 camPos) {
     int screenRadius = (int)radius;

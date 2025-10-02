@@ -1,4 +1,5 @@
 #include "camera.h"
+#include <SDL_keycode.h>
 
 Camera::Camera() : position(0, 0, 0), lightPos(200, -200, 300) {}
 
