@@ -28,6 +28,9 @@ void Camera::handleInput(const SDL_Event &event) {
         case SDLK_s:
             position.z -= 10;
             break;
+        case SDLK_r:
+            angleX = 0;
+            angleY = 0;
         // Light source controls
         case SDLK_i:
             lightPos.y -= 20;

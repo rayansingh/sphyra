@@ -6,7 +6,7 @@ constexpr int SCREEN_CENTER_X = 400;         // Screen center X value (800/2)
 constexpr int SCREEN_CENTER_Y = 300;         // Screen center Y value (600/2)
 constexpr float LIGHT_SPHERE_RADIUS = 10.0f; // Light source radius
 
-void drawSphere3D(SDL_Renderer *renderer, Vec3 center, float radius, Vec3 lightPos, Vec3 camPos) {
+void drawSphere3D(SDL_Renderer *renderer, Vec3 center, float radius, Vec3 lightPos, Vec3 camPos, Vec3 color) {
     int screenRadius = (int)radius;
 
     // Find sphere center on screen
@@ -38,7 +38,8 @@ void drawSphere3D(SDL_Renderer *renderer, Vec3 center, float radius, Vec3 lightP
                 float intensity = ambient + lightAmount * 0.8f;
 
                 int brightness = (int)(intensity * 255);
-                SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255);
+                Vec3 drawColor = color * intensity;
+                SDL_SetRenderDrawColor(renderer, drawColor.x, drawColor.y, drawColor.z, 255);
                 SDL_RenderDrawPoint(renderer, cx + x, cy + y);
             }
         }
