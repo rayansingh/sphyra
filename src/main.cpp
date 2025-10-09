@@ -21,11 +21,10 @@ constexpr double SUN_MASS = 1.989e30;
 
 // 'h' in SPH, neighbor search radius, max distance at which one particle can influence another
 constexpr float SMOOTHING_LENGTH = 50.0f;
-constexpr float REST_DENSITY = 1000.0f;   // reference density, might be varied for each later
-constexpr float GAS_CONSTANT = 2000.0f;   // controls stiffness of pressure, might be varied for each later
+constexpr float REST_DENSITY = 1000.0f;   // reference density
+constexpr float GAS_CONSTANT = 200.0f;   // controls stiffness of pressure, might be varied for each later
 constexpr float POLY6 = 315.0f / (64.0f * M_PI * 1.953125e15); // density, std::pow(SMOOTHING_LENGTH,9)=1.953125e15
 constexpr float SPIKYGRAD = -45.0f / (M_PI * 1.5625e10); // pressure force, std::pow(SMOOTHING_LENGTH,6)=1.5625e10
-constexpr double INV_TEMP = 1.0e-24; // Slow down the particle for observation
 
 static const Vec3 BLUE(0.0f, 0.0f, 255.0f);
 static const Vec3 YELLOW(255.0f,255.0f, 0.0f);
@@ -55,6 +54,7 @@ class Body {
     void update(void) {
         center += vel;
         vel += acc;
+        // vel = vel * 0.99f; // intentional loss (DEL)
     }
 
     // Find and add acceleration due to gravity towards other body
@@ -129,10 +129,11 @@ class Scene {
                 if (r < SMOOTHING_LENGTH && r > 1e-6f) {
                     float t = SMOOTHING_LENGTH - r;
                     Vec3 grad = rVec.normalized() * SPIKYGRAD * t * t;
-                    pressureForce += grad * (body.pressure / body.density + neighbor.pressure / neighbor.density);
+                    pressureForce += grad * body.mass * neighbor.mass * (body.pressure / (body.density * body.density) + 
+                        neighbor.pressure / (neighbor.density * neighbor.density));
                 }
             }
-            body.acc += pressureForce * (-body.mass) * INV_TEMP;
+            body.acc += pressureForce;
         }
     }
 
@@ -140,11 +141,11 @@ class Scene {
         accumulator += deltaTime;
 
         while (accumulator >= updateInterval) {
-            //computeDensityPressure();
+            computeDensityPressure();
             for (auto &body : bodies) {
                 body.acc = Vec3(0, 0, 0); // Reset
                 body.updateAcceleration(sol);
-            //computeForces();
+            computeForces();
             for (auto &body : bodies)
                 body.update();
             }
@@ -241,7 +242,7 @@ int main(int argc, char *argv[]) {
                 std::mt19937 gen(rd());
                 std::uniform_real_distribution<float> velDist(-5.0f, 5.0f);
                 std::uniform_real_distribution<float> accDist(0.0f, 0.0f);
-                std::uniform_real_distribution<float> massDist(10.0f, 1.0e20f);
+                std::uniform_real_distribution<float> massDist(1.0f, 10.0f);
 
                 scene.bodies.push_back({actualPos + scene.pivot, Vec3(velDist(gen), velDist(gen), velDist(gen)),
                                         Vec3(accDist(gen), accDist(gen), accDist(gen)), 10, massDist(gen)});
