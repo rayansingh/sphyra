@@ -20,11 +20,14 @@ constexpr double SUN_MASS = 1.989e30;
 
 
 // 'h' in SPH, neighbor search radius, max distance at which one particle can influence another
-constexpr float SMOOTHING_LENGTH = 50.0f;
-constexpr float REST_DENSITY = 1000.0f;   // reference density
-constexpr float GAS_CONSTANT = 200.0f;   // controls stiffness of pressure, might be varied for each later
-constexpr float POLY6 = 315.0f / (64.0f * M_PI * 1.953125e15); // density, std::pow(SMOOTHING_LENGTH,9)=1.953125e15
-constexpr float SPIKYGRAD = -45.0f / (M_PI * 1.5625e10); // pressure force, std::pow(SMOOTHING_LENGTH,6)=1.5625e10
+// TODO: might need to be tuned SMOOTHING_LENGTH, REST_DENSITY, GAS_CONSTANT, MU
+constexpr double SMOOTHING_LENGTH = 2.5;
+constexpr double REST_DENSITY = 1.0;   // reference density
+constexpr double GAS_CONSTANT = 2000.0;   // controls stiffness of pressure
+constexpr double MU = 0.1; // viscosity of fluid
+constexpr double POLY6 = 315.0 / (64.0 * M_PI * 1.953125e15); // density, std::pow(SMOOTHING_LENGTH,9)=1.953125e15
+constexpr double SPIKYGRAD = -45.0 / (M_PI * 1.5625e10); // pressure force, std::pow(SMOOTHING_LENGTH,6)=1.5625e10
+constexpr double VISCLAPLACIAN = 45.0 / (M_PI * 1.5625e10);
 
 static const Vec3 BLUE(0.0f, 0.0f, 255.0f);
 static const Vec3 YELLOW(255.0f,255.0f, 0.0f);
@@ -34,14 +37,16 @@ struct BackgroundStar {
     float size;
 };
 
-class Body {
+class Body { // particle
   public:
     Vec3 center;
-    float radius, mass;
+    const float radius, mass;
     Vec3 vel, acc;
     Vec3 hue;
-    float density = 0.0f;
-    float pressure = 0.0f;
+    double density = 0.0;
+    double pressure = 0.0;
+    Vec3 pressureForce;
+    Vec3 viscosityForce;
 
     Body(Vec3 center, float radius = 10, float mass = 10, Vec3 hue = {255, 255, 255})
         : center(center), radius(radius), mass(mass), hue(hue) {
@@ -54,19 +59,24 @@ class Body {
     void update(void) {
         center += vel;
         vel += acc;
-        // vel = vel * 0.99f; // intentional loss (DEL)
     }
 
-    // Find and add acceleration due to gravity towards other body
+    // Find and add acceleration
+    // DUE TO gravity towards other body
+    // AND pressure force and viscosity force
     void updateAcceleration(const Body &other) {
         Vec3 rVec = other.center - center;
         float r2 = rVec.lengthSquared();
+        double eps = 1e-3; // softening to avoid blow-ups
+        double inv_r3 = 1.0 / std::pow(r2 + eps*eps, 1.5);
+        acc = Vec3(); // Reset
 
-        if (r2 < 1e-6f)
-            return;
-
-        float aMag = G_SCALED * other.mass / (r2 * std::sqrt(r2)); // G*M/(r^3)
-        acc += rVec * aMag;
+        // float aMag = G_SCALED * other.mass / (r2 * std::sqrt(r2)); // G*M/(r^3); Physics
+        // numerically safe
+        acc += rVec * G_SCALED * other.mass * inv_r3; // acc from external force
+        float inv_mass = 1.0f / mass;
+        acc += pressureForce * inv_mass;
+        acc += viscosityForce * inv_mass;
     }
 
     void draw(SDL_Renderer *renderer, Vec3 lightPos, Vec3 camPos, const Camera &camera, Vec3 pivot) {
@@ -100,12 +110,11 @@ class Scene {
         }
     }
 
-    // Compute Density and Pressure for particles, O(n2)
-    void computeDensityPressure() {
+    // Update Density for all particles, O(n2)
+    void updateDensity() {
         const float h2 = SMOOTHING_LENGTH * SMOOTHING_LENGTH;
-
         for (auto &body : bodies) {
-            body.density = 0.0f;
+            body.density = 0.0;
             for (auto &neighbor : bodies) {
                 Vec3 rVec = neighbor.center - body.center;
                 float r2 = rVec.lengthSquared();
@@ -114,14 +123,18 @@ class Scene {
                     body.density += neighbor.mass * POLY6 * t * t * t;
                 }
             }
+        }
+    }
+
+    void updatePressure() {
+        for (auto &body : bodies) {
             body.pressure = GAS_CONSTANT * (body.density - REST_DENSITY);
         }
     }
 
-    // Compute Force -> affect acc
-    void computeForces() {
+    void updatePressureForce() {
         for (auto &body : bodies) {
-            Vec3 pressureForce(0,0,0);
+            body.pressureForce = Vec3();
             for (auto& neighbor : bodies) {
                 if (&body == &neighbor) continue;
                 Vec3 rVec = neighbor.center - body.center;
@@ -129,11 +142,23 @@ class Scene {
                 if (r < SMOOTHING_LENGTH && r > 1e-6f) {
                     float t = SMOOTHING_LENGTH - r;
                     Vec3 grad = rVec.normalized() * SPIKYGRAD * t * t;
-                    pressureForce += grad * body.mass * neighbor.mass * (body.pressure / (body.density * body.density) + 
-                        neighbor.pressure / (neighbor.density * neighbor.density));
+                    body.pressureForce += grad * (neighbor.mass * (-0.5) * (body.pressure + neighbor.pressure) / neighbor.density);
                 }
             }
-            body.acc += pressureForce;
+        }
+    }
+
+    void updateViscosityForce() {
+        for (auto &body : bodies) {
+            body.viscosityForce = Vec3();
+            for (auto &neighbor : bodies) {
+                if (&body == &neighbor) continue;
+                Vec3 rVec = neighbor.center - body.center;
+                float t = SMOOTHING_LENGTH - rVec.length();
+                if (t > 0) {
+                    body.viscosityForce += (neighbor.vel - body.vel) * (neighbor.mass / neighbor.density * VISCLAPLACIAN * t);
+                }
+            }
         }
     }
 
@@ -141,12 +166,12 @@ class Scene {
         accumulator += deltaTime;
 
         while (accumulator >= updateInterval) {
-            computeDensityPressure();
+            updateDensity();
+            updatePressure();
+            updatePressureForce();
+            updateViscosityForce();
             for (auto &body : bodies) {
-                body.acc = Vec3(0, 0, 0); // Reset
                 body.updateAcceleration(sol);
-            computeForces();
-            for (auto &body : bodies)
                 body.update();
             }
             accumulator -= updateInterval;
