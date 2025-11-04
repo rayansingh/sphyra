@@ -73,12 +73,15 @@ class Body { // particle
     // AND pressure force and viscosity force
     void updateAcceleration(const Body &other) {
         Vec3 rVec = other.center - center;
-        float r2 = rVec.lengthSquared();
-        double eps = 1e-3;
-        double inv_r3 = 1.0 / std::pow(r2 + eps*eps, 1.5);
+        float r = rVec.length();
+        if (r < 1e-6f) {
+            acc = Vec3();
+            return;
+        }
         acc = Vec3();
 
-        acc += rVec * G_SCALED * other.mass * inv_r3;
+        float GM = 2000.0f;
+        acc += rVec * (GM / (r * r * r));
     }
 
     void draw(PixelBuffer &buffer, Vec3 lightPos, Vec3 camPos, const Camera &camera, Vec3 pivot) {
@@ -235,7 +238,8 @@ void Scenes::accretionDisk(Scene& scene) {
 
         Vec3 pos(400 + r * std::cos(theta), 300 + r * std::sin(theta), 200 + z);
 
-        float orbitalSpeed = std::sqrt(G_SCALED * (SUN_MASS * 5) / r) * 0.5f;
+        float GM = 2000.0f;
+        float orbitalSpeed = std::sqrt(GM / r);
 
         Vec3 vel(-orbitalSpeed * std::sin(theta), orbitalSpeed * std::cos(theta), 0);
 
