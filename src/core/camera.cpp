@@ -1,7 +1,7 @@
 #include "camera.h"
 #include <cmath>
 
-Camera::Camera() : position(0, 0, 0), lightPos(200, -200, 300), angleX(0), angleY(0) {}
+Camera::Camera() : position(400, 300, 0), lightPos(200, -200, 300), angleX(0), angleY(0) {}
 
 Vec3 Camera::rotatePoint(const Vec3 &point) const {
     float cosY = std::cos(angleY);

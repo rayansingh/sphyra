@@ -35,6 +35,7 @@ add_custom_target(
         ${CMAKE_SOURCE_DIR}/src/render/renderer.cpp
         ${CMAKE_SOURCE_DIR}/include/camera.h
         ${CMAKE_SOURCE_DIR}/include/renderer.h
+        ${CMAKE_SOURCE_DIR}/include/scenes.h
         ${CMAKE_SOURCE_DIR}/include/vec3.h
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "clang-format"

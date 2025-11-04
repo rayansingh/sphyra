@@ -53,15 +53,7 @@ void drawSphere3D(PixelBuffer &buffer, Vec3 center, float radius, Vec3 lightPos,
                 Vec3 surfacePoint(center.x + x * radius / screenRadius, center.y + y * radius / screenRadius,
                                   center.z + dz * radius / screenRadius);
 
-                Vec3 normal = (surfacePoint - center).normalized();
-
-                Vec3 lightDir = (lightPos - surfacePoint).normalized();
-
-                float lightAmount = std::max(0.0f, normal.dot(lightDir));
-                float ambient = 0.2f;
-                float intensity = ambient + lightAmount * 0.8f;
-
-                Vec3 drawColor = color * intensity;
+                Vec3 drawColor = color;
                 buffer.setPixel(cx + x, cy + y,
                                static_cast<uint8_t>(drawColor.x),
                                static_cast<uint8_t>(drawColor.y),
