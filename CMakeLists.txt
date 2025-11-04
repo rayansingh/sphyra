@@ -6,18 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/external)
 
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
-
-# Main executable (Week 1: Basic particles)
 add_executable(sphyra
     src/main.cpp
     src/core/camera.cpp
     src/render/renderer.cpp
 )
-
-target_link_libraries(sphyra ${SDL2_LIBRARIES})
 
 # Run Linter
 add_custom_target(
