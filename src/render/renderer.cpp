@@ -50,7 +50,8 @@ void drawSphere3D(PixelBuffer &buffer, Vec3 center, float radius, Vec3 lightPos,
             if (distSq <= screenRadius * screenRadius) {
                 float dz = std::sqrt(std::max(0.0f, screenRadius * screenRadius - distSq));
 
-                Vec3 surfacePoint(center.x + x * radius / screenRadius, center.y + y * radius / screenRadius,
+                Vec3 surfacePoint(center.x + x * radius / screenRadius,
+                                  center.y + y * radius / screenRadius,
                                   center.z + dz * radius / screenRadius);
 
                 Vec3 drawColor = color;

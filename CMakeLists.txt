@@ -11,6 +11,8 @@ include_directories(${CMAKE_SOURCE_DIR}/external)
 add_executable(sphyra
     src/main.cpp
     src/core/camera.cpp
+    src/core/scene.cpp
+    src/core/scenes.cpp
     src/render/renderer.cpp
 )
 
@@ -21,6 +23,8 @@ add_custom_target(
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/src/main.cpp
         ${CMAKE_SOURCE_DIR}/src/core/camera.cpp
+        ${CMAKE_SOURCE_DIR}/src/core/scene.cpp
+        ${CMAKE_SOURCE_DIR}/src/core/scenes.cpp
         ${CMAKE_SOURCE_DIR}/src/render/renderer.cpp
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "clang-tidy"
@@ -31,10 +35,13 @@ add_custom_target(
     format
     COMMAND /opt/homebrew/opt/llvm/bin/clang-format -i
         ${CMAKE_SOURCE_DIR}/src/main.cpp
+        ${CMAKE_SOURCE_DIR}/src/core/scene.cpp
+        ${CMAKE_SOURCE_DIR}/src/core/scenes.cpp
         ${CMAKE_SOURCE_DIR}/src/core/camera.cpp
         ${CMAKE_SOURCE_DIR}/src/render/renderer.cpp
         ${CMAKE_SOURCE_DIR}/include/camera.h
         ${CMAKE_SOURCE_DIR}/include/renderer.h
+        ${CMAKE_SOURCE_DIR}/include/constants.h
         ${CMAKE_SOURCE_DIR}/include/scenes.h
         ${CMAKE_SOURCE_DIR}/include/vec3.h
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

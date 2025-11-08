@@ -34,9 +34,9 @@ class Scene {
     Body sol;
     std::vector<Body> bodies;
     std::vector<BackgroundStar> stars;
-    Vec3 pivot;
-    float updateInterval;
-    float accumulator;
+    Vec3 pivot;           // Rotation pivot point
+    float updateInterval; // Time between physics updates (seconds)
+    float accumulator;    // Accumulated time for physics
 
     Scene(Body sol, unsigned int numStars = 0, float updateInterval = 0.016f);
 
