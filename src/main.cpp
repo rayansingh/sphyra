@@ -73,14 +73,6 @@ int main(int argc, char *argv[]) {
 
     std::filesystem::create_directories(outputDir);
 
-    if (std::filesystem::exists(outputDir)) {
-        for (const auto& entry : std::filesystem::directory_iterator(outputDir)) {
-            if (entry.path().extension() == ".png") {
-                std::filesystem::remove(entry.path());
-            }
-        }
-    }
-
     PixelBuffer buffer(800, 600);
     Scene scene({Vec3(0, 0, 200), 65, SUN_MASS, YELLOW}, 1000, REFRESH_RATE_60FPS, backend, optimization);
 
@@ -94,43 +86,31 @@ int main(int argc, char *argv[]) {
     std::cout << "Particles: " << numParticles << "\n";
     std::cout << "Frames: " << numFrames << "\n";
     std::cout << "Output directory: " << outputDir << "\n";
+
+    // Open ffmpeg pipe
+    std::ostringstream ffmpegCmd;
+    std::string videoPath = outputDir.string() + "/" + selectedScene->name + ".mp4";
+    ffmpegCmd << "ffmpeg -y -f rawvideo -pix_fmt rgba " << "-s 800x600 -r 60 -i - " << "-c:v libx264 -pix_fmt yuv420p -crf 18 " << videoPath << " 2>/dev/null";
+    
+    FILE* ffmpeg = popen(ffmpegCmd.str().c_str(), "w");
+    if (!ffmpeg) {
+        std::cerr << "Failed to open ffmpeg pipe\n";
+        return 1;
+    }
+
     std::cout << "\nRendering: " << std::flush;
 
     for (int frame = 0; frame < numFrames; ++frame) {
         buffer.clear(0, 0, 0);
         scene.draw(buffer);
-
         scene.update(REFRESH_RATE_60FPS);
 
-        std::ostringstream filename;
-        filename << outputDir.string() << "/" << selectedScene->name << "_frame_"
-                 << std::setfill('0') << std::setw(4) << frame << ".png";
-
-        if (buffer.saveAsPNG(filename.str().c_str())) {
-            std::cout << "." << std::flush;
-        } else {
-            std::cerr << "\nFailed to save " << filename.str() << "\n";
-        }
+        fwrite(buffer.pixels.data(), 1, buffer.pixels.size(), ffmpeg);
+        std::cout << "." << std::flush;
     }
 
-    std::cout << "\nComplete! Frames saved to output/\n";
-
-    if (numFrames > 1) {
-        std::cout << "\nCreating video with ffmpeg...\n";
-        std::ostringstream ffmpegCmd;
-        ffmpegCmd << "ffmpeg -y -framerate 60 -i " << outputDir.string()
-                  << "/" << selectedScene->name << "_frame_%04d.png"
-                  << " -c:v libx264 -pix_fmt yuv420p -crf 18 "
-                  << outputDir.string() << "/" << selectedScene->name << ".mp4";
-
-        int result = std::system(ffmpegCmd.str().c_str());
-        if (result == 0) {
-            std::cout << "Video created: " << outputDir.string() << "/"
-                      << selectedScene->name << ".mp4\n";
-        } else {
-            std::cerr << "Failed to create video. Make sure ffmpeg is installed.\n";
-        }
-    }
+    pclose(ffmpeg);
+    std::cout << "\nComplete! Video saved to " << videoPath << "\n";
 
     return 0;
 }
