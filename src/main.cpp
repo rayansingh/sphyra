@@ -15,28 +15,51 @@
 #include "scene.h"
 #include "scenes.h"
 
-void printUsage(const char* progName) {
-    std::cout << "Usage: " << progName << " [frames]\n\n";
-    std::cout << "Generates frames of an accretion disk simulation.\n";
-    std::cout << "If frames > 1, automatically creates an MP4 video using ffmpeg.\n\n";
-    std::cout << "Examples:\n";
-    std::cout << "  " << progName << " 1           # Single frame\n";
-    std::cout << "  " << progName << " 100         # 100 frames + video\n";
-    std::cout << "  " << progName << "             # Default (1 frame)\n";
-}
 
 int main(int argc, char *argv[]) {
     int numFrames = 1;
+    int numParticles = 500;
+    OptimizationLevel optimization = OptimizationLevel::BASELINE;
+    ComputeBackend backend = ComputeBackend::CPU;
 
-    if (argc > 1) {
-        if (std::strcmp(argv[1], "--help") == 0 || std::strcmp(argv[1], "-h") == 0) {
-            printUsage(argv[0]);
-            return 0;
-        }
-        numFrames = std::atoi(argv[1]);
-        if (numFrames < 1) {
-            std::cerr << "Invalid frame count. Using default: 1\n";
-            numFrames = 1;
+    // Parse command-line arguments
+    for (int i = 1; i < argc; ++i) {
+        if (std::strncmp(argv[i], "--optimization=", 15) == 0) {
+            const char* level = argv[i] + 15;
+            if (std::strcmp(level, "baseline") == 0) {
+                optimization = OptimizationLevel::BASELINE;
+                backend = ComputeBackend::CPU;
+            } else if (std::strcmp(level, "gpu_density") == 0) {
+                optimization = OptimizationLevel::GPU_DENSITY;
+                backend = ComputeBackend::GPU;
+#ifndef CUDA_AVAILABLE
+                std::cerr << "Error: gpu_density optimization requires CUDA support\n";
+                std::cerr << "Please rebuild with CUDA or use --optimization=baseline\n";
+                return 1;
+#endif
+            } else {
+                std::cerr << "Error: Unknown optimization level '" << level << "'\n";
+                std::cerr << "Valid levels: baseline, gpu_density\n";
+                return 1;
+            }
+        } else if (std::strcmp(argv[i], "--particles") == 0 || std::strcmp(argv[i], "-p") == 0) {
+            if (i + 1 < argc) {
+                numParticles = std::atoi(argv[++i]);
+                if (numParticles < 1) {
+                    std::cerr << "Invalid particle count. Using default: 500\n";
+                    numParticles = 500;
+                }
+            } else {
+                std::cerr << "Error: --particles requires a number\n";
+                return 1;
+            }
+        } else {
+            // Assume it's the frame count
+            numFrames = std::atoi(argv[i]);
+            if (numFrames < 1) {
+                std::cerr << "Invalid frame count. Using default: 1\n";
+                numFrames = 1;
+            }
         }
     }
 
@@ -59,14 +82,19 @@ int main(int argc, char *argv[]) {
     }
 
     PixelBuffer buffer(800, 600);
-    Scene scene({Vec3(0, 0, 200), 65, SUN_MASS, YELLOW}, 1000, REFRESH_RATE_60FPS);
+    Scene scene({Vec3(0, 0, 200), 65, SUN_MASS, YELLOW}, 1000, REFRESH_RATE_60FPS, backend, optimization);
 
-    selectedScene->setup(scene);
+    selectedScene->setup(scene, numParticles);
 
+    const char* optimizationName = (optimization == OptimizationLevel::BASELINE) ? "baseline" : "gpu_density";
+    
     std::cout << "Running scene: " << selectedScene->name << "\n";
     std::cout << "Description: " << selectedScene->description << "\n";
+    std::cout << "Optimization: " << optimizationName << "\n";
+    std::cout << "Particles: " << numParticles << "\n";
     std::cout << "Frames: " << numFrames << "\n";
     std::cout << "Output directory: " << outputDir << "\n";
+    std::cout << "\nRendering: " << std::flush;
 
     for (int frame = 0; frame < numFrames; ++frame) {
         buffer.clear(0, 0, 0);
@@ -79,16 +107,13 @@ int main(int argc, char *argv[]) {
                  << std::setfill('0') << std::setw(4) << frame << ".png";
 
         if (buffer.saveAsPNG(filename.str().c_str())) {
-            if (frame % 10 == 0 || frame == numFrames - 1) {
-                std::cout << "Saved " << filename.str() << " (" << (frame + 1)
-                         << "/" << numFrames << ")\n";
-            }
+            std::cout << "." << std::flush;
         } else {
-            std::cerr << "Failed to save " << filename.str() << "\n";
+            std::cerr << "\nFailed to save " << filename.str() << "\n";
         }
     }
 
-    std::cout << "Complete! Frames saved to output/\n";
+    std::cout << "\nComplete! Frames saved to output/\n";
 
     if (numFrames > 1) {
         std::cout << "\nCreating video with ffmpeg...\n";

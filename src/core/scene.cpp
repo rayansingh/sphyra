@@ -6,7 +6,11 @@
 #include "vec3.h"
 #include "constants.h"
 #include "scene.h"
+#include <algorithm>
 
+#ifdef CUDA_AVAILABLE
+#include "sph_cuda.h"
+#endif
 
 
 Body::Body(Vec3 center, float radius, float mass, Vec3 hue)
@@ -18,8 +22,9 @@ Body::Body(Vec3 center, Vec3 vel, Vec3 acc, float radius, float mass, Vec3 hue)
     : center(center), vel(vel), acc(acc), radius(radius), mass(mass), hue(hue) {};
 
 void Body::update(void) {
-    center += vel;
+    // Symplectic Euler integration
     vel += acc;
+    center += vel;
 }
 
 // Find and add acceleration
@@ -45,8 +50,8 @@ void Body::draw(PixelBuffer &buffer, Vec3 lightPos, Vec3 camPos, const Camera &c
 }
 
 
-Scene::Scene(Body sol, unsigned int numStars, float updateInterval)
-    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f) {
+Scene::Scene(Body sol, unsigned int numStars, float updateInterval, ComputeBackend backend, OptimizationLevel optimization)
+    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), backend(backend), optimization(optimization) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distX(0.0f, 800.0f);
@@ -59,8 +64,8 @@ Scene::Scene(Body sol, unsigned int numStars, float updateInterval)
     }
 }
 
-// Update Density for all particles, O(n2)
-void Scene::updateDensity() {
+// CPU implementation of density update - O(n2)
+void Scene::updateDensityCPU() {
     const float h2 = SMOOTHING_LENGTH * SMOOTHING_LENGTH;
     for (auto &body : bodies) {
         body.density = 0.0;
@@ -72,6 +77,31 @@ void Scene::updateDensity() {
                 body.density += neighbor.mass * POLY6 * t * t * t;
             }
         }
+    }
+}
+
+// Dispatcher for density update
+void Scene::updateDensity() {
+    // Use optimization level to determine which implementation to use
+    switch (optimization) {
+        case OptimizationLevel::BASELINE:
+            // Baseline: CPU O(n²) neighbor search
+            updateDensityCPU();
+            break;
+            
+        case OptimizationLevel::GPU_DENSITY:
+            // GPU-accelerated density calculation
+#ifdef CUDA_AVAILABLE
+            cudaUpdateDensity(bodies);
+#else
+            std::cerr << "Error: GPU density optimization requested but CUDA support not compiled in\n";
+            exit(1);
+#endif
+            break;
+            
+        default:
+            updateDensityCPU();
+            break;
     }
 }
 
@@ -135,24 +165,13 @@ void Scene::draw(PixelBuffer &buffer) {
         sortedBodies.push_back(&body);
     }
 
-    std::cout << "Sorting " << sortedBodies.size() << " particles..." << std::flush;
     std::sort(sortedBodies.begin(), sortedBodies.end(), [&](const Body* a, const Body* b) {
         Vec3 rotatedA = camera.rotatePoint(a->center - pivot) + pivot;
         Vec3 rotatedB = camera.rotatePoint(b->center - pivot) + pivot;
         return rotatedA.z > rotatedB.z;
     });
-    std::cout << " done\n";
-
-    std::cout << "Rendering particles: [" << std::flush;
-    size_t total = sortedBodies.size();
-    size_t progressStep = total / 50;
-    if (progressStep == 0) progressStep = 1;
 
     for (size_t i = 0; i < sortedBodies.size(); i++) {
         sortedBodies[i]->draw(buffer, camera.lightPos, camera.position, camera, pivot);
-        if (i % progressStep == 0) {
-            std::cout << "#" << std::flush;
-        }
     }
-    std::cout << "] done\n" << std::flush;
 }

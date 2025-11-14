@@ -5,6 +5,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Check for CUDA
+include(CheckLanguage)
+check_language(CUDA)
+
+set(CUDA_SOURCES "")
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    set(CUDA_SOURCES src/cuda/sph_kernels.cu)
+    add_compile_definitions(CUDA_AVAILABLE)
+    message(STATUS "CUDA support enabled")
+else()
+    message(STATUS "CUDA not found - building CPU-only version")
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/external)
 
@@ -14,6 +30,7 @@ add_executable(sphyra
     src/core/scene.cpp
     src/core/scenes.cpp
     src/render/renderer.cpp
+    ${CUDA_SOURCES}
 )
 
 # Run Linter

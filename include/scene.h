@@ -4,6 +4,16 @@
 #include "vec3.h"
 #include <vector>
 
+enum class ComputeBackend {
+    CPU,
+    GPU
+};
+
+enum class OptimizationLevel {
+    BASELINE,      // Baseline CPU with O(n²) neighbor search
+    GPU_DENSITY    // Density calculation on GPU
+};
+
 struct BackgroundStar {
     float x, y;
     float size;
@@ -37,8 +47,12 @@ class Scene {
     Vec3 pivot;           // Rotation pivot point
     float updateInterval; // Time between physics updates (seconds)
     float accumulator;    // Accumulated time for physics
+    ComputeBackend backend; // CPU or GPU computation
+    OptimizationLevel optimization; // Optimization level for benchmarking
 
-    Scene(Body sol, unsigned int numStars = 0, float updateInterval = 0.016f);
+    Scene(Body sol, unsigned int numStars = 0, float updateInterval = 0.016f, 
+          ComputeBackend backend = ComputeBackend::CPU, 
+          OptimizationLevel optimization = OptimizationLevel::BASELINE);
 
     void updateDensity();
     void updatePressure();
@@ -46,4 +60,7 @@ class Scene {
     void updateViscosityForce();
     void update(float deltaTime);
     void draw(PixelBuffer &buffer);
+
+  private:
+    void updateDensityCPU();
 };

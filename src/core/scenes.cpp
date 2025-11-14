@@ -3,7 +3,7 @@
 #include "scene.h"
 #include "scenes.h"
 
-void Scenes::accretionDisk(Scene& scene) {
+void Scenes::accretionDisk(Scene& scene, int numParticles) {
     scene.bodies.clear();
 
     scene.sol.center = Vec3(400, 300, 200);
@@ -18,7 +18,7 @@ void Scenes::accretionDisk(Scene& scene) {
     std::uniform_real_distribution<float> distTheta(0.0f, 2.0f * M_PI);
     std::uniform_real_distribution<float> distZ(-8.0f, 8.0f);
 
-    for (int i = 0; i < 5000/*25000*/; i++) {
+    for (int i = 0; i < numParticles; i++) {
         float r = distR(gen);
         float theta = distTheta(gen);
         float z = distZ(gen);

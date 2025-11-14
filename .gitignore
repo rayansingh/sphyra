@@ -1,4 +1,21 @@
 build
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+
+*.o
+*.a
+*.so
+
+sphyra
+
+output
+
 .cache
 .vscode
-output
+.idea
