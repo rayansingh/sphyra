@@ -1,7 +1,6 @@
 #pragma once
 #include <cmath>
 
-// Vec3 class used for projections and ray math
 struct Vec3 {
     float x, y, z;
 
@@ -36,5 +35,24 @@ struct Vec3 {
     Vec3 normalized() const {
         float len = length();
         return len > 0 ? Vec3(x / len, y / len, z / len) : Vec3(0, 0, 0);
+    }
+
+    Vec3 cross(const Vec3 &other) const {
+        return Vec3(
+            y * other.z - z * other.y,
+            z * other.x - x * other.z,
+            x * other.y - y * other.x
+        );
+    }
+};
+
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+    
+    Ray(Vec3 o, Vec3 d) : origin(o), direction(d.normalized()) {}
+    
+    Vec3 at(float t) const {
+        return origin + direction * t;
     }
 };

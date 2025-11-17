@@ -31,6 +31,9 @@ The `--optimization` flag is used for performance benchmarking and controls whic
 #### `--optimization=gpu_density`
 - GPU-accelerated density calculation
 
+#### `--optimization=gpu_density_and_raytracing`
+- GPU-accelerated density calculation and ray tracing
+
 ### Examples
 
 ```bash

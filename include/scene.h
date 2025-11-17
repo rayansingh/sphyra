@@ -10,13 +10,27 @@ enum class ComputeBackend {
 };
 
 enum class OptimizationLevel {
-    BASELINE,      // Baseline CPU with O(n²) neighbor search
-    GPU_DENSITY    // Density calculation on GPU
+    BASELINE,
+    GPU_DENSITY,
+    GPU_DENSITY_AND_RAYTRACING
 };
 
 struct BackgroundStar {
     float x, y;
     float size;
+};
+
+struct HitRecord {
+    Vec3 point;
+    Vec3 normal;
+    float t;
+    bool frontFace;
+    Vec3 color;
+    
+    void setFaceNormal(const Ray& r, const Vec3& outwardNormal) {
+        frontFace = r.direction.dot(outwardNormal) < 0;
+        normal = frontFace ? outwardNormal : outwardNormal * -1.0f;
+    }
 };
 
 class Body {
@@ -36,6 +50,7 @@ class Body {
     void update(void);
     void updateAcceleration(const Body &other);
     void draw(PixelBuffer &buffer, Vec3 lightPos, Vec3 camPos, const Camera &camera, Vec3 pivot);
+    bool intersect(const Ray& ray, float tMin, float tMax, HitRecord& rec) const;
 };
 
 class Scene {

@@ -3,11 +3,12 @@
 #include <cstdint>
 #include <vector>
 
-// Pixel buffer for software rendering
+class Scene;
+
 class PixelBuffer {
   public:
     int width, height;
-    std::vector<uint8_t> pixels; // RGBA format
+    std::vector<uint8_t> pixels;
 
     PixelBuffer(int w, int h);
     void clear(uint8_t r, uint8_t g, uint8_t b);
@@ -15,5 +16,6 @@ class PixelBuffer {
     bool saveAsPNG(const char* filename);
 };
 
-void drawSphere3D(PixelBuffer &buffer, Vec3 center, float radius, Vec3 lightPos, Vec3 camPos, Vec3 color);
-void drawLightSource(PixelBuffer &buffer, Vec3 lightPos, Vec3 camPos);
+Vec3 rayTrace(const Ray& ray, const Scene& scene);
+void renderWithRayTracing(PixelBuffer& buffer, const Scene& scene);
+void renderWithRayTracingGPU(PixelBuffer& buffer, const Scene& scene);

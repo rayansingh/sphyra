@@ -37,9 +37,17 @@ int main(int argc, char *argv[]) {
                 std::cerr << "Please rebuild with CUDA or use --optimization=baseline\n";
                 return 1;
 #endif
+            } else if (std::strcmp(level, "gpu_density_and_raytracing") == 0) {
+                optimization = OptimizationLevel::GPU_DENSITY_AND_RAYTRACING;
+                backend = ComputeBackend::GPU;
+#ifndef CUDA_AVAILABLE
+                std::cerr << "Error: gpu_density_and_raytracing optimization requires CUDA support\n";
+                std::cerr << "Please rebuild with CUDA or use --optimization=baseline\n";
+                return 1;
+#endif
             } else {
                 std::cerr << "Error: Unknown optimization level '" << level << "'\n";
-                std::cerr << "Valid levels: baseline, gpu_density\n";
+                std::cerr << "Valid levels: baseline, gpu_density, gpu_density_and_raytracing\n";
                 return 1;
             }
         } else if (std::strcmp(argv[i], "--particles") == 0 || std::strcmp(argv[i], "-p") == 0) {
@@ -78,7 +86,10 @@ int main(int argc, char *argv[]) {
 
     selectedScene->setup(scene, numParticles);
 
-    const char* optimizationName = (optimization == OptimizationLevel::BASELINE) ? "baseline" : "gpu_density";
+    const char* optimizationName = 
+        (optimization == OptimizationLevel::BASELINE) ? "baseline" : 
+        (optimization == OptimizationLevel::GPU_DENSITY) ? "gpu_density" : 
+        "gpu_density_and_raytracing";
     
     std::cout << "Running scene: " << selectedScene->name << "\n";
     std::cout << "Description: " << selectedScene->description << "\n";

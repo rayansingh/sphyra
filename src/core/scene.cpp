@@ -44,9 +44,33 @@ void Body::updateAcceleration(const Body &other) {
 }
 
 void Body::draw(PixelBuffer &buffer, Vec3 lightPos, Vec3 camPos, const Camera &camera, Vec3 pivot) {
-    Vec3 rotatedCenter = camera.rotatePoint(center - pivot) + pivot;
-    Vec3 rotatedLight = camera.rotatePoint(lightPos - pivot) + pivot;
-    drawSphere3D(buffer, rotatedCenter, radius, rotatedLight, camPos, hue);
+}
+
+bool Body::intersect(const Ray& ray, float tMin, float tMax, HitRecord& rec) const {
+    Vec3 oc = ray.origin - center;
+    float a = ray.direction.dot(ray.direction);
+    float halfB = oc.dot(ray.direction);
+    float c = oc.dot(oc) - radius * radius;
+    
+    float discriminant = halfB * halfB - a * c;
+    if (discriminant < 0) return false;
+    
+    float sqrtd = sqrt(discriminant);
+    
+    float root = (-halfB - sqrtd) / a;
+    if (root < tMin || root > tMax) {
+        root = (-halfB + sqrtd) / a;
+        if (root < tMin || root > tMax)
+            return false;
+    }
+    
+    rec.t = root;
+    rec.point = ray.at(rec.t);
+    Vec3 outwardNormal = (rec.point - center) * (1.0f / radius);
+    rec.setFaceNormal(ray, outwardNormal);
+    rec.color = hue;
+    
+    return true;
 }
 
 
@@ -82,15 +106,13 @@ void Scene::updateDensityCPU() {
 
 // Dispatcher for density update
 void Scene::updateDensity() {
-    // Use optimization level to determine which implementation to use
     switch (optimization) {
         case OptimizationLevel::BASELINE:
-            // Baseline: CPU O(n²) neighbor search
             updateDensityCPU();
             break;
             
         case OptimizationLevel::GPU_DENSITY:
-            // GPU-accelerated density calculation
+        case OptimizationLevel::GPU_DENSITY_AND_RAYTRACING:
 #ifdef CUDA_AVAILABLE
             cudaUpdateDensity(bodies);
 #else
@@ -158,20 +180,13 @@ void Scene::update(float deltaTime) {
 }
 
 void Scene::draw(PixelBuffer &buffer) {
-    std::vector<Body*> sortedBodies;
-    sortedBodies.reserve(bodies.size() + 1);
-    sortedBodies.push_back(&sol);
-    for (auto &body : bodies) {
-        sortedBodies.push_back(&body);
-    }
-
-    std::sort(sortedBodies.begin(), sortedBodies.end(), [&](const Body* a, const Body* b) {
-        Vec3 rotatedA = camera.rotatePoint(a->center - pivot) + pivot;
-        Vec3 rotatedB = camera.rotatePoint(b->center - pivot) + pivot;
-        return rotatedA.z > rotatedB.z;
-    });
-
-    for (size_t i = 0; i < sortedBodies.size(); i++) {
-        sortedBodies[i]->draw(buffer, camera.lightPos, camera.position, camera, pivot);
+    if (optimization == OptimizationLevel::GPU_DENSITY_AND_RAYTRACING) {
+#ifdef CUDA_AVAILABLE
+        renderWithRayTracingGPU(buffer, *this);
+#else
+        renderWithRayTracing(buffer, *this);
+#endif
+    } else {
+        renderWithRayTracing(buffer, *this);
     }
 }
