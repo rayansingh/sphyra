@@ -210,59 +210,85 @@ __global__ void rayTraceKernel(
     float ray_dz = pixel_z - camera.pos_z;
     vec3_normalize(ray_dx, ray_dy, ray_dz);
     
+    float pos_x = camera.pos_x;
+    float pos_y = camera.pos_y;
+    float pos_z = camera.pos_z;
+    
+    const float dt = GEODESIC_STEP;
+    const float eventHorizon = bodies[0].radius * EVENT_HORIZON_MULTIPLIER;
     const float tMin = 0.001f;
-    const float tMax = 1e10f;
+    const float maxDist = MAX_GEODESIC_DISTANCE;
     
-    float closest_t = tMax;
-    float hit_nx = 0, hit_ny = 0, hit_nz = 0;
-    float hit_r = 0, hit_g = 0, hit_b = 0;
-    bool hitAnything = false;
+    uint8_t r = 0, g = 0, b = 0;
     
-    for (int k = 0; k < numBodies; ++k) {
-        float t, nx, ny, nz;
-        if (intersectSphere(
-            camera.pos_x, camera.pos_y, camera.pos_z,
-            ray_dx, ray_dy, ray_dz,
-            bodies[k].cx, bodies[k].cy, bodies[k].cz,
-            bodies[k].radius,
-            tMin, closest_t,
-            t, nx, ny, nz
-        )) {
-            closest_t = t;
-            hit_nx = nx;
-            hit_ny = ny;
-            hit_nz = nz;
-            hit_r = bodies[k].hue_r;
-            hit_g = bodies[k].hue_g;
-            hit_b = bodies[k].hue_b;
-            hitAnything = true;
+    for (float t = 0; t < maxDist; t += dt) {
+        float toBH_x = bodies[0].cx - pos_x;
+        float toBH_y = bodies[0].cy - pos_y;
+        float toBH_z = bodies[0].cz - pos_z;
+        float distance = vec3_length(toBH_x, toBH_y, toBH_z);
+        
+        if (distance < eventHorizon) {
+            break;
         }
+        
+        // Normalize direction to black hole
+        float toBH_norm_x = toBH_x / distance;
+        float toBH_norm_y = toBH_y / distance;
+        float toBH_norm_z = toBH_z / distance;
+        
+        // Calculate deflection strength
+        float deflectionMag = LENSING_STRENGTH / (distance * distance);
+        
+        // Project deflection perpendicular to ray direction
+        // Remove component parallel to ray (dot product)
+        float parallel = vec3_dot(toBH_norm_x, toBH_norm_y, toBH_norm_z, ray_dx, ray_dy, ray_dz);
+        float perp_x = toBH_norm_x - ray_dx * parallel;
+        float perp_y = toBH_norm_y - ray_dy * parallel;
+        float perp_z = toBH_norm_z - ray_dz * parallel;
+        
+        // Apply perpendicular deflection
+        ray_dx += perp_x * deflectionMag * dt;
+        ray_dy += perp_y * deflectionMag * dt;
+        ray_dz += perp_z * deflectionMag * dt;
+        vec3_normalize(ray_dx, ray_dy, ray_dz);
+        
+        for (int k = 0; k < numBodies; ++k) {
+            float hit_t, nx, ny, nz;
+            if (intersectSphere(
+                pos_x, pos_y, pos_z,
+                ray_dx, ray_dy, ray_dz,
+                bodies[k].cx, bodies[k].cy, bodies[k].cz,
+                bodies[k].radius,
+                tMin, dt * 2.0f,
+                hit_t, nx, ny, nz
+            )) {
+                float hit_x = pos_x + ray_dx * hit_t;
+                float hit_y = pos_y + ray_dy * hit_t;
+                float hit_z = pos_z + ray_dz * hit_t;
+                
+                float light_dx = camera.light_x - hit_x;
+                float light_dy = camera.light_y - hit_y;
+                float light_dz = camera.light_z - hit_z;
+                vec3_normalize(light_dx, light_dy, light_dz);
+                
+                float diffuse = fmaxf(0.0f, vec3_dot(nx, ny, nz, light_dx, light_dy, light_dz));
+                float ambient = 0.2f;
+                float brightness = diffuse * 0.8f + ambient;
+                
+                r = (uint8_t)fminf(255.0f, bodies[k].hue_r * brightness);
+                g = (uint8_t)fminf(255.0f, bodies[k].hue_g * brightness);
+                b = (uint8_t)fminf(255.0f, bodies[k].hue_b * brightness);
+                
+                goto done;
+            }
+        }
+        
+        pos_x += ray_dx * dt;
+        pos_y += ray_dy * dt;
+        pos_z += ray_dz * dt;
     }
     
-    uint8_t r, g, b;
-    
-    if (hitAnything) {
-        float hit_x = camera.pos_x + ray_dx * closest_t;
-        float hit_y = camera.pos_y + ray_dy * closest_t;
-        float hit_z = camera.pos_z + ray_dz * closest_t;
-        
-        float light_dx = camera.light_x - hit_x;
-        float light_dy = camera.light_y - hit_y;
-        float light_dz = camera.light_z - hit_z;
-        vec3_normalize(light_dx, light_dy, light_dz);
-        
-        float diffuse = fmaxf(0.0f, vec3_dot(hit_nx, hit_ny, hit_nz, light_dx, light_dy, light_dz));
-        
-        float ambient = 0.2f;
-        float brightness = diffuse * 0.8f + ambient;
-        
-        r = (uint8_t)fminf(255.0f, hit_r * brightness);
-        g = (uint8_t)fminf(255.0f, hit_g * brightness);
-        b = (uint8_t)fminf(255.0f, hit_b * brightness);
-    } else {
-        r = g = b = 0;
-    }
-    
+done:
     int index = (j * width + i) * 4;
     pixels[index] = r;
     pixels[index + 1] = g;

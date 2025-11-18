@@ -2,7 +2,7 @@
 #include <cmath>
 
 Camera::Camera() {
-    position = Vec3(400, 100, 0);
+    position = Vec3(400, 100, -100);
     lookAt = Vec3(400, 300, 200);
     up = Vec3(0, 1, 0);
     lightPos = Vec3(200, -200, 300);

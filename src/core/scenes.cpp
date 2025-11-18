@@ -10,11 +10,12 @@ void Scenes::accretionDisk(Scene& scene, int numParticles) {
     scene.sol.hue = Vec3(0, 0, 0);
     scene.pivot = Vec3(400, 300, 200);
 
-    scene.camera.angleX = -M_PI / 2.5f;
+    scene.camera.position = Vec3(400, -450, 140);
+    scene.camera.angleX = -M_PI / 2.0f - 0.2f;
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> distR(100.0f, 220.0f);
+    std::uniform_real_distribution<float> distR(150.0f, 330.0f);
     std::uniform_real_distribution<float> distTheta(0.0f, 2.0f * M_PI);
     std::uniform_real_distribution<float> distZ(-8.0f, 8.0f);
 
@@ -30,7 +31,7 @@ void Scenes::accretionDisk(Scene& scene, int numParticles) {
 
         Vec3 vel(-orbitalSpeed * std::sin(theta), orbitalSpeed * std::cos(theta), 0);
 
-        float t = (r - 100.0f) / 120.0f;
+        float t = (r - 150.0f) / 180.0f;
         Vec3 color;
         if (t < 0.5f) {
             color = ORANGE * (1.0f - t/0.5f) + YELLOW * (t/0.5f);

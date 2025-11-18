@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "scene.h"
+#include "constants.h"
 #include <algorithm>
 #include <cmath>
 
@@ -39,36 +40,57 @@ bool PixelBuffer::saveAsPNG(const char* filename) {
 }
 
 Vec3 rayTrace(const Ray& ray, const Scene& scene) {
+    Vec3 pos = ray.origin;
+    Vec3 dir = ray.direction;
+    
+    const float dt = GEODESIC_STEP;
+    const float eventHorizon = scene.sol.radius * EVENT_HORIZON_MULTIPLIER;
     const float tMin = 0.001f;
-    const float tMax = 1e10f;
     
-    HitRecord closestHit;
-    closestHit.t = tMax;
-    bool hitAnything = false;
-    
-    if (scene.sol.intersect(ray, tMin, closestHit.t, closestHit)) {
-        hitAnything = true;
-    }
-    
-    for (const auto& body : scene.bodies) {
-        if (body.intersect(ray, tMin, closestHit.t, closestHit)) {
-            hitAnything = true;
+    for (float t = 0; t < MAX_GEODESIC_DISTANCE; t += dt) {
+        Vec3 toBlackHole = scene.sol.center - pos;
+        float distance = toBlackHole.length();
+        
+        if (distance < eventHorizon) {
+            return Vec3(0, 0, 0);
         }
-    }
-    
-    if (hitAnything) {
-        Vec3 lightDir = (scene.camera.lightPos - closestHit.point).normalized();
-        float diffuse = std::max(0.0f, closestHit.normal.dot(lightDir));
         
-        float ambient = 0.2f;
-        float brightness = diffuse * 0.8f + ambient;
-        Vec3 color = closestHit.color * brightness;
+        Vec3 deflection = toBlackHole * (LENSING_STRENGTH / (distance * distance * distance));
+        dir = (dir + deflection * dt).normalized();
         
-        return Vec3(
-            std::min(255.0f, color.x),
-            std::min(255.0f, color.y),
-            std::min(255.0f, color.z)
-        );
+        Ray currentRay(pos, dir);
+        HitRecord hit;
+        hit.t = dt * 2.0f;
+        
+        if (scene.sol.intersect(currentRay, tMin, hit.t, hit)) {
+            Vec3 lightDir = (scene.camera.lightPos - hit.point).normalized();
+            float diffuse = std::max(0.0f, hit.normal.dot(lightDir));
+            float ambient = 0.2f;
+            float brightness = diffuse * 0.8f + ambient;
+            Vec3 color = hit.color * brightness;
+            return Vec3(
+                std::min(255.0f, color.x),
+                std::min(255.0f, color.y),
+                std::min(255.0f, color.z)
+            );
+        }
+        
+        for (const auto& body : scene.bodies) {
+            if (body.intersect(currentRay, tMin, hit.t, hit)) {
+                Vec3 lightDir = (scene.camera.lightPos - hit.point).normalized();
+                float diffuse = std::max(0.0f, hit.normal.dot(lightDir));
+                float ambient = 0.2f;
+                float brightness = diffuse * 0.8f + ambient;
+                Vec3 color = hit.color * brightness;
+                return Vec3(
+                    std::min(255.0f, color.x),
+                    std::min(255.0f, color.y),
+                    std::min(255.0f, color.z)
+                );
+            }
+        }
+        
+        pos = pos + dir * dt;
     }
     
     return Vec3(0, 0, 0);

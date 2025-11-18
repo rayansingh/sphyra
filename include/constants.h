@@ -21,6 +21,11 @@ constexpr double POLY6 = 315.0 / (64.0 * M_PI * 1.953125e15);
 constexpr double SPIKYGRAD = -45.0 / (M_PI * 1.5625e10);
 constexpr double VISCLAPLACIAN = 45.0 / (M_PI * 1.5625e10);
 
+constexpr float LENSING_STRENGTH = 50.0f;
+constexpr float GEODESIC_STEP = 10.0f;
+constexpr float MAX_GEODESIC_DISTANCE = 1000.0f;
+constexpr float EVENT_HORIZON_MULTIPLIER = 0.5f;
+
 static const Vec3 BLUE(0.0f, 0.0f, 255.0f);
 static const Vec3 YELLOW(255.0f,255.0f, 0.0f);
 static const Vec3 RED(255.0f, 0.0f, 0.0f);
