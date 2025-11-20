@@ -19,35 +19,38 @@
 int main(int argc, char *argv[]) {
     int numFrames = 1;
     int numParticles = 500;
-    OptimizationLevel optimization = OptimizationLevel::BASELINE;
-    ComputeBackend backend = ComputeBackend::CPU;
+    bool sphGPU = false;
+    bool raytracingGPU = false;
 
-    // Parse command-line arguments
     for (int i = 1; i < argc; ++i) {
-        if (std::strncmp(argv[i], "--optimization=", 15) == 0) {
-            const char* level = argv[i] + 15;
-            if (std::strcmp(level, "baseline") == 0) {
-                optimization = OptimizationLevel::BASELINE;
-                backend = ComputeBackend::CPU;
-            } else if (std::strcmp(level, "gpu_density") == 0) {
-                optimization = OptimizationLevel::GPU_DENSITY;
-                backend = ComputeBackend::GPU;
+        if (std::strncmp(argv[i], "--sph=", 6) == 0) {
+            const char* value = argv[i] + 6;
+            if (std::strcmp(value, "gpu") == 0) {
+                sphGPU = true;
 #ifndef CUDA_AVAILABLE
-                std::cerr << "Error: gpu_density optimization requires CUDA support\n";
-                std::cerr << "Please rebuild with CUDA or use --optimization=baseline\n";
+                std::cerr << "Error: --sph=gpu requires CUDA support\n";
                 return 1;
 #endif
-            } else if (std::strcmp(level, "gpu_density_and_raytracing") == 0) {
-                optimization = OptimizationLevel::GPU_DENSITY_AND_RAYTRACING;
-                backend = ComputeBackend::GPU;
-#ifndef CUDA_AVAILABLE
-                std::cerr << "Error: gpu_density_and_raytracing optimization requires CUDA support\n";
-                std::cerr << "Please rebuild with CUDA or use --optimization=baseline\n";
-                return 1;
-#endif
+            } else if (std::strcmp(value, "cpu") == 0) {
+                sphGPU = false;
             } else {
-                std::cerr << "Error: Unknown optimization level '" << level << "'\n";
-                std::cerr << "Valid levels: baseline, gpu_density, gpu_density_and_raytracing\n";
+                std::cerr << "Error: Unknown value for --sph: '" << value << "'\n";
+                std::cerr << "Valid values: cpu, gpu\n";
+                return 1;
+            }
+        } else if (std::strncmp(argv[i], "--raytracing=", 13) == 0) {
+            const char* value = argv[i] + 13;
+            if (std::strcmp(value, "gpu") == 0) {
+                raytracingGPU = true;
+#ifndef CUDA_AVAILABLE
+                std::cerr << "Error: --raytracing=gpu requires CUDA support\n";
+                return 1;
+#endif
+            } else if (std::strcmp(value, "cpu") == 0) {
+                raytracingGPU = false;
+            } else {
+                std::cerr << "Error: Unknown value for --raytracing: '" << value << "'\n";
+                std::cerr << "Valid values: cpu, gpu\n";
                 return 1;
             }
         } else if (std::strcmp(argv[i], "--particles") == 0 || std::strcmp(argv[i], "-p") == 0) {
@@ -62,7 +65,6 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         } else {
-            // Assume it's the frame count
             numFrames = std::atoi(argv[i]);
             if (numFrames < 1) {
                 std::cerr << "Invalid frame count. Using default: 1\n";
@@ -82,18 +84,14 @@ int main(int argc, char *argv[]) {
     std::filesystem::create_directories(outputDir);
 
     PixelBuffer buffer(800, 600);
-    Scene scene({Vec3(0, 0, 200), 65, SUN_MASS, YELLOW}, 1000, REFRESH_RATE_60FPS, backend, optimization);
+    Scene scene({Vec3(0, 0, 200), 65, SUN_MASS, YELLOW}, 1000, REFRESH_RATE_60FPS, sphGPU, raytracingGPU);
 
     selectedScene->setup(scene, numParticles);
 
-    const char* optimizationName = 
-        (optimization == OptimizationLevel::BASELINE) ? "baseline" : 
-        (optimization == OptimizationLevel::GPU_DENSITY) ? "gpu_density" : 
-        "gpu_density_and_raytracing";
-    
     std::cout << "Running scene: " << selectedScene->name << "\n";
     std::cout << "Description: " << selectedScene->description << "\n";
-    std::cout << "Optimization: " << optimizationName << "\n";
+    std::cout << "SPH: " << (sphGPU ? "GPU" : "CPU") << "\n";
+    std::cout << "Raytracing: " << (raytracingGPU ? "GPU" : "CPU") << "\n";
     std::cout << "Particles: " << numParticles << "\n";
     std::cout << "Frames: " << numFrames << "\n";
     std::cout << "Output directory: " << outputDir << "\n";

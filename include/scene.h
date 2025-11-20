@@ -4,17 +4,6 @@
 #include "vec3.h"
 #include <vector>
 
-enum class ComputeBackend {
-    CPU,
-    GPU
-};
-
-enum class OptimizationLevel {
-    BASELINE,
-    GPU_DENSITY,
-    GPU_DENSITY_AND_RAYTRACING
-};
-
 struct BackgroundStar {
     float x, y;
     float size;
@@ -59,15 +48,14 @@ class Scene {
     Body sol;
     std::vector<Body> bodies;
     std::vector<BackgroundStar> stars;
-    Vec3 pivot;           // Rotation pivot point
-    float updateInterval; // Time between physics updates (seconds)
-    float accumulator;    // Accumulated time for physics
-    ComputeBackend backend; // CPU or GPU computation
-    OptimizationLevel optimization; // Optimization level for benchmarking
+    Vec3 pivot;
+    float updateInterval;
+    float accumulator;
+    bool sphGPU;
+    bool raytracingGPU;
 
     Scene(Body sol, unsigned int numStars = 0, float updateInterval = 0.016f, 
-          ComputeBackend backend = ComputeBackend::CPU, 
-          OptimizationLevel optimization = OptimizationLevel::BASELINE);
+          bool sphGPU = false, bool raytracingGPU = false);
 
     void updateDensity();
     void updatePressure();

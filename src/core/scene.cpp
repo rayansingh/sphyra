@@ -22,14 +22,10 @@ Body::Body(Vec3 center, Vec3 vel, Vec3 acc, float radius, float mass, Vec3 hue)
     : center(center), vel(vel), acc(acc), radius(radius), mass(mass), hue(hue) {};
 
 void Body::update(void) {
-    // Symplectic Euler integration
     vel += acc;
     center += vel;
 }
 
-// Find and add acceleration
-// DUE TO gravity towards other body
-// AND pressure force and viscosity force
 void Body::updateAcceleration(const Body &other) {
     Vec3 rVec = other.center - center;
     float r = rVec.length();
@@ -74,8 +70,8 @@ bool Body::intersect(const Ray& ray, float tMin, float tMax, HitRecord& rec) con
 }
 
 
-Scene::Scene(Body sol, unsigned int numStars, float updateInterval, ComputeBackend backend, OptimizationLevel optimization)
-    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), backend(backend), optimization(optimization) {
+Scene::Scene(Body sol, unsigned int numStars, float updateInterval, bool sphGPU, bool raytracingGPU)
+    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), sphGPU(sphGPU), raytracingGPU(raytracingGPU) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distX(0.0f, 800.0f);
@@ -88,7 +84,6 @@ Scene::Scene(Body sol, unsigned int numStars, float updateInterval, ComputeBacke
     }
 }
 
-// CPU implementation of density update - O(n2)
 void Scene::updateDensityCPU() {
     const float h2 = SMOOTHING_LENGTH * SMOOTHING_LENGTH;
     for (auto &body : bodies) {
@@ -104,26 +99,16 @@ void Scene::updateDensityCPU() {
     }
 }
 
-// Dispatcher for density update
 void Scene::updateDensity() {
-    switch (optimization) {
-        case OptimizationLevel::BASELINE:
-            updateDensityCPU();
-            break;
-            
-        case OptimizationLevel::GPU_DENSITY:
-        case OptimizationLevel::GPU_DENSITY_AND_RAYTRACING:
+    if (sphGPU) {
 #ifdef CUDA_AVAILABLE
-            cudaUpdateDensity(bodies);
+        cudaUpdateDensity(bodies);
 #else
-            std::cerr << "Error: GPU density optimization requested but CUDA support not compiled in\n";
-            exit(1);
+        std::cerr << "Error: GPU SPH requested but CUDA support not compiled in\n";
+        exit(1);
 #endif
-            break;
-            
-        default:
-            updateDensityCPU();
-            break;
+    } else {
+        updateDensityCPU();
     }
 }
 
@@ -180,11 +165,12 @@ void Scene::update(float deltaTime) {
 }
 
 void Scene::draw(PixelBuffer &buffer) {
-    if (optimization == OptimizationLevel::GPU_DENSITY_AND_RAYTRACING) {
+    if (raytracingGPU) {
 #ifdef CUDA_AVAILABLE
         renderWithRayTracingGPU(buffer, *this);
 #else
-        renderWithRayTracing(buffer, *this);
+        std::cerr << "Error: GPU raytracing requested but CUDA support not compiled in\n";
+        exit(1);
 #endif
     } else {
         renderWithRayTracing(buffer, *this);

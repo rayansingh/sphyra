@@ -10,8 +10,10 @@ void Scenes::accretionDisk(Scene& scene, int numParticles) {
     scene.sol.hue = Vec3(0, 0, 0);
     scene.pivot = Vec3(400, 300, 200);
 
-    scene.camera.position = Vec3(400, -450, 140);
-    scene.camera.angleX = -M_PI / 2.0f - 0.2f;
+    scene.camera.position = Vec3(400, -450, 380);
+    scene.camera.angleX = -M_PI / 2.0f - 0.55f;
+    scene.camera.fov = 70.0f;
+    scene.camera.updateCameraVectors();
 
     std::random_device rd;
     std::mt19937 gen(rd());
