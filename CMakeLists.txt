@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Check for OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP support enabled")
+endif()
+
 # Check for CUDA
 include(CheckLanguage)
 check_language(CUDA)
@@ -32,6 +38,10 @@ add_executable(sphyra
     src/render/renderer.cpp
     ${CUDA_SOURCES}
 )
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(sphyra PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 # Run Linter
 add_custom_target(
