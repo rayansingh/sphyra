@@ -15,8 +15,8 @@ void Scenes::accretionDisk(Scene& scene, int numParticles) {
     scene.camera.fov = 70.0f;
     scene.camera.updateCameraVectors();
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    // std::random_device rd;
+    std::mt19937 gen(42);
     std::uniform_real_distribution<float> distR(150.0f, 330.0f);
     std::uniform_real_distribution<float> distTheta(0.0f, 2.0f * M_PI);
     std::uniform_real_distribution<float> distZ(-8.0f, 8.0f);

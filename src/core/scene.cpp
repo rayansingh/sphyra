@@ -72,8 +72,8 @@ bool Body::intersect(const Ray& ray, float tMin, float tMax, HitRecord& rec) con
 
 Scene::Scene(Body sol, unsigned int numStars, float updateInterval, bool sphGPU, bool raytracingGPU, bool useBinning, bool useOverlap, bool useAdaptive, bool useSharedMem)
     : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), sphGPU(sphGPU), raytracingGPU(raytracingGPU), useBinning(useBinning), useOverlap(useOverlap), useAdaptive(useAdaptive), useSharedMem(useSharedMem), cudaStreams(nullptr) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    // std::random_device rd;
+    std::mt19937 gen(42);
     std::uniform_real_distribution<float> distX(0.0f, 800.0f);
     std::uniform_real_distribution<float> distY(0.0f, 600.0f);
     std::uniform_real_distribution<float> distSize(1.0f, 3.0f);
