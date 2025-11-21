@@ -195,6 +195,20 @@ int main(int argc, char *argv[]) {
         scene.draw(buffer);
         
         scene.update(REFRESH_RATE_60FPS);
+
+        /* Uncommented the following to save a frame */
+        // std::ostringstream savedFramePath;
+        // savedFramePath << outputDir.string() << "/" << selectedScene->name << "_frame_"
+        //          << std::setfill('0') << std::setw(4) << frame << ".png";
+
+        // if (buffer.saveAsPNG(savedFramePath.str().c_str())) {
+        //     if (frame % 10 == 0 || frame == numFrames - 1) {
+        //         std::cout << "Saved " << savedFramePath.str() << " (" << (frame + 1)
+        //                  << "/" << numFrames << ")\n";
+        //     }
+        // } else {
+        //     std::cerr << "Failed to save " << savedFramePath.str() << "\n";
+        // }
         
         if (useOverlap) {
 #ifdef CUDA_AVAILABLE

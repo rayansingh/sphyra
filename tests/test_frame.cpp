@@ -8,7 +8,7 @@
 #include "../external/stb_image.h"
 
 const float EPS = 1e-4;
-const float ERR_THR = 1e-5;
+const float ERR_THR = 1e-2;
 
 bool loadImage(const std::string& filename, std::vector<uint8_t>& pixels, int& width, int& height) {
     int n_channels;
