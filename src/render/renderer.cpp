@@ -46,12 +46,17 @@ Vec3 rayTrace(const Ray& ray, const Scene& scene) {
     const float dt = GEODESIC_STEP;
     const float eventHorizon = scene.sol.radius * EVENT_HORIZON_MULTIPLIER;
     const float tMin = 0.001f;
+    const float sceneBoundingRadius = 800.0f;
     
     for (float t = 0; t < MAX_GEODESIC_DISTANCE; t += dt) {
         Vec3 toBlackHole = scene.sol.center - pos;
         float distance = toBlackHole.length();
         
         if (distance < eventHorizon) {
+            return Vec3(0, 0, 0);
+        }
+        
+        if (distance > sceneBoundingRadius) {
             return Vec3(0, 0, 0);
         }
         
