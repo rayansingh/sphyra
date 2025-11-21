@@ -574,6 +574,7 @@ __global__ void rayTraceKernel(
     const float tMin = 0.001f;
     const float maxDist = MAX_GEODESIC_DISTANCE;
     const float baseStepSize = GEODESIC_STEP;
+    const float sceneBoundingRadius = 800.0f;
     
     const float minStepSize = baseStepSize * 0.5f;
     const float maxStepSize = baseStepSize * 3.0f;
@@ -588,6 +589,10 @@ __global__ void rayTraceKernel(
         float distance = vec3_length(toBH_x, toBH_y, toBH_z);
         
         if (distance < eventHorizon) {
+            break;
+        }
+        
+        if (distance > sceneBoundingRadius) {
             break;
         }
         

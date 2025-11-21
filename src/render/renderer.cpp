@@ -3,6 +3,7 @@
 #include "constants.h"
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #ifdef CUDA_AVAILABLE
 #include "sph_cuda.h"
@@ -46,12 +47,17 @@ Vec3 rayTrace(const Ray& ray, const Scene& scene) {
     const float dt = GEODESIC_STEP;
     const float eventHorizon = scene.sol.radius * EVENT_HORIZON_MULTIPLIER;
     const float tMin = 0.001f;
+    const float sceneBoundingRadius = 800.0f;
     
     for (float t = 0; t < MAX_GEODESIC_DISTANCE; t += dt) {
         Vec3 toBlackHole = scene.sol.center - pos;
         float distance = toBlackHole.length();
         
         if (distance < eventHorizon) {
+            return Vec3(0, 0, 0);
+        }
+        
+        if (distance > sceneBoundingRadius) {
             return Vec3(0, 0, 0);
         }
         
@@ -98,6 +104,9 @@ Vec3 rayTrace(const Ray& ray, const Scene& scene) {
 
 void renderWithRayTracing(PixelBuffer& buffer, const Scene& scene) {
     for (int j = 0; j < buffer.height; ++j) {
+        if (j % 10 == 0) {
+            std::cout << "." << std::flush;
+        }
         for (int i = 0; i < buffer.width; ++i) {
             float u = float(i) / (buffer.width - 1);
             float v = 1.0f - float(j) / (buffer.height - 1);
@@ -111,6 +120,9 @@ void renderWithRayTracing(PixelBuffer& buffer, const Scene& scene) {
                 static_cast<uint8_t>(color.z)
             );
         }
+    }
+    if (buffer.height > 0) {
+        std::cout << std::endl;
     }
 }
 
