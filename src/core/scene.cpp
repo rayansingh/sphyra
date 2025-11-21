@@ -70,8 +70,8 @@ bool Body::intersect(const Ray& ray, float tMin, float tMax, HitRecord& rec) con
 }
 
 
-Scene::Scene(Body sol, unsigned int numStars, float updateInterval, bool sphGPU, bool raytracingGPU)
-    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), sphGPU(sphGPU), raytracingGPU(raytracingGPU) {
+Scene::Scene(Body sol, unsigned int numStars, float updateInterval, bool sphGPU, bool raytracingGPU, bool useBinning, bool useOverlap, bool useAdaptive, bool useSharedMem)
+    : sol(sol), pivot(0, 0, 200), updateInterval(updateInterval), accumulator(0.0f), sphGPU(sphGPU), raytracingGPU(raytracingGPU), useBinning(useBinning), useOverlap(useOverlap), useAdaptive(useAdaptive), useSharedMem(useSharedMem), cudaStreams(nullptr) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distX(0.0f, 800.0f);
@@ -82,6 +82,20 @@ Scene::Scene(Body sol, unsigned int numStars, float updateInterval, bool sphGPU,
     for (unsigned int i = 0; i < numStars; i++) {
         stars.push_back({distX(gen), distY(gen), distSize(gen)});
     }
+    
+#ifdef CUDA_AVAILABLE
+    if (useOverlap && (sphGPU || raytracingGPU)) {
+        cudaStreams = cudaCreateStreams();
+    }
+#endif
+}
+
+Scene::~Scene() {
+#ifdef CUDA_AVAILABLE
+    if (cudaStreams) {
+        cudaDestroyStreams(static_cast<CudaStreams*>(cudaStreams));
+    }
+#endif
 }
 
 void Scene::updateDensityCPU() {
@@ -102,7 +116,27 @@ void Scene::updateDensityCPU() {
 void Scene::updateDensity() {
     if (sphGPU) {
 #ifdef CUDA_AVAILABLE
-        cudaUpdateDensity(bodies);
+        if (useOverlap && cudaStreams) {
+            if (useBinning) {
+                if (useSharedMem) {
+                    cudaUpdateDensityBinnedSharedMemAsync(bodies, static_cast<CudaStreams*>(cudaStreams));
+                } else {
+                    cudaUpdateDensityBinnedAsync(bodies, static_cast<CudaStreams*>(cudaStreams));
+                }
+            } else {
+                cudaUpdateDensityAsync(bodies, static_cast<CudaStreams*>(cudaStreams));
+            }
+        } else {
+            if (useBinning) {
+                if (useSharedMem) {
+                    cudaUpdateDensityBinnedSharedMem(bodies);
+                } else {
+                    cudaUpdateDensityBinned(bodies);
+                }
+            } else {
+                cudaUpdateDensity(bodies);
+            }
+        }
 #else
         std::cerr << "Error: GPU SPH requested but CUDA support not compiled in\n";
         exit(1);
@@ -167,7 +201,11 @@ void Scene::update(float deltaTime) {
 void Scene::draw(PixelBuffer &buffer) {
     if (raytracingGPU) {
 #ifdef CUDA_AVAILABLE
-        renderWithRayTracingGPU(buffer, *this);
+        if (useOverlap && cudaStreams) {
+            cudaRayTraceAsync(buffer.pixels.data(), buffer.width, buffer.height, *this, static_cast<CudaStreams*>(cudaStreams), useAdaptive);
+        } else {
+            cudaRayTrace(buffer.pixels.data(), buffer.width, buffer.height, *this, useAdaptive);
+        }
 #else
         std::cerr << "Error: GPU raytracing requested but CUDA support not compiled in\n";
         exit(1);
@@ -175,4 +213,20 @@ void Scene::draw(PixelBuffer &buffer) {
     } else {
         renderWithRayTracing(buffer, *this);
     }
+}
+
+void Scene::syncSphStream() {
+#ifdef CUDA_AVAILABLE
+    if (useOverlap && cudaStreams) {
+        cudaSyncSphStream(static_cast<CudaStreams*>(cudaStreams));
+    }
+#endif
+}
+
+void Scene::syncRenderStream() {
+#ifdef CUDA_AVAILABLE
+    if (useOverlap && cudaStreams) {
+        cudaSyncRenderStream(static_cast<CudaStreams*>(cudaStreams));
+    }
+#endif
 }

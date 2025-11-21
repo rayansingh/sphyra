@@ -116,7 +116,7 @@ void renderWithRayTracing(PixelBuffer& buffer, const Scene& scene) {
 
 void renderWithRayTracingGPU(PixelBuffer& buffer, const Scene& scene) {
 #ifdef CUDA_AVAILABLE
-    cudaRayTrace(buffer.pixels.data(), buffer.width, buffer.height, scene);
+    cudaRayTrace(buffer.pixels.data(), buffer.width, buffer.height, scene, scene.useAdaptive);
 #else
     renderWithRayTracing(buffer, scene);
 #endif

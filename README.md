@@ -19,6 +19,10 @@ make
 
 - `--sph=MODE` - SPH computation: `cpu` or `gpu` (default: cpu)
 - `--raytracing=MODE` - Ray tracing: `cpu` or `gpu` (default: cpu)
+- `--binning=MODE` - Spatial binning for SPH: `true` or `false` (default: false, requires --sph=gpu)
+- `--shared_mem=MODE` - Shared memory for SPH: `true` or `false` (default: false, requires --binning=true)
+- `--overlap=MODE` - CUDA stream overlap: `true` or `false` (default: false, requires GPU)
+- `--adaptive=MODE` - Adaptive ray quality: `true` or `false` (default: false, GPU raytracing only)
 - `--particles N` or `-p N` - Number of particles (default: 500)
 
 ### Examples
@@ -26,7 +30,8 @@ make
 ```bash
 ./sphyra
 ./sphyra --sph=gpu -p 5000 60
-./sphyra --sph=gpu --raytracing=gpu -p 10000 30
+./sphyra --sph=gpu --raytracing=gpu --overlap=true --adaptive=true -p 10000 30
+./sphyra --sph=gpu --binning=true --shared_mem=true --overlap=true --adaptive=true -p 10000 60
 ```
 
 ## Project Structure

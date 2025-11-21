@@ -53,9 +53,14 @@ class Scene {
     float accumulator;
     bool sphGPU;
     bool raytracingGPU;
+    bool useBinning;
+    bool useOverlap;
+    bool useAdaptive;
+    bool useSharedMem;
 
     Scene(Body sol, unsigned int numStars = 0, float updateInterval = 0.016f, 
-          bool sphGPU = false, bool raytracingGPU = false);
+          bool sphGPU = false, bool raytracingGPU = false, bool useBinning = false, bool useOverlap = false, bool useAdaptive = false, bool useSharedMem = false);
+    ~Scene();
 
     void updateDensity();
     void updatePressure();
@@ -63,7 +68,10 @@ class Scene {
     void updateViscosityForce();
     void update(float deltaTime);
     void draw(PixelBuffer &buffer);
+    void syncSphStream();
+    void syncRenderStream();
 
   private:
     void updateDensityCPU();
+    void* cudaStreams;
 };
